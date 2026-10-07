@@ -1,0 +1,30 @@
+[
+  {
+    "buildingId": 1,
+    "name": "Boebel Hall",
+    "category": "Academic Building",
+    "demo_description": "Used as lecture hall including laboratories and undergraduate research.",
+    "coordinates": [-90.48838913043905, 42.73329490958033]
+  },
+  {
+    "buildingId": 2,
+    "name": "Dobson Hall",
+    "category": "Residence Hall",
+    "demo_description": "Used as dormatory residency for students.",
+    "coordinates": [-90.49420323696401, 42.733558898596954]
+  },
+  {
+    "buildingId": 3,
+    "name": "Glenview Commons",
+    "category": "University Services",
+    "demo_description": "Used as on campus grocery market and cafeteria.",
+    "coordinates": [-90.49515108244496, 42.73246002081736]
+  },
+  {
+    "buildingId": 4,
+    "name": "Williams Fieldhouse",
+    "category": "Athletics or Recreation",
+    "demo_description": "Used as athletic, recreational, academic complex.",
+    "coordinates": [-90.48830262456137, 42.73096569478455]
+  }
+]

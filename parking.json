@@ -1,0 +1,26 @@
+[
+  {
+    "lotId": 1,
+    "name": "P1",
+    "category": "Student Parking",
+    "coordinates": [-90.48838913043905, 42.73329490958033]
+  },
+  {
+    "lotId": 2,
+    "name": "P2",
+    "category": "Faculty Parking",
+    "coordinates": [-90.49420323696401, 42.733558898596954]
+  },
+  {
+    "lotId": 3,
+    "name": "P3",
+    "category": "Commuter Parking",
+    "coordinates": [-90.49515108244496, 42.73246002081736]
+  },
+  {
+    "lotId": 4,
+    "name": "P3A",
+    "category": "Hourly Parking",
+    "coordinates": [-90.48830262456137, 42.73096569478455]
+  }
+]
