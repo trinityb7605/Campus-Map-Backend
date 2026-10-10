@@ -1,27 +1,286 @@
 [
   {
     "buildingId": 1,
+    "name": "Art Building",
+    "category": "Academic Building",
+    "demo_description": "Used as a place for students to access art studios and also hosts exhibitions to show off students artwork.",
+    "coordinates": [-90.4869163719925,  42.734080255894696]
+  },
+  {
+    "buildingId": 2,
     "name": "Boebel Hall",
     "category": "Academic Building",
     "demo_description": "Used as lecture hall including laboratories and undergraduate research.",
     "coordinates": [-90.48838913043905, 42.73329490958033]
   },
   {
-    "buildingId": 2,
+    "buildingId": 3,
+    "name": "Bridgeway Commons",
+    "category": "Residence Hall",
+    "demo_description": "Used as dormatory residency for students; Also acts as a dining hall with dining services.",
+    "coordinates": [-90.49222484595339, 42.72893666191985]
+  },
+  {
+    "buildingId": 4,
+    "name": "Brockert Hall",
+    "category": "Residence Hall",
+    "demo_description": "Used as dormatory residency for students.",
+    "coordinates": [-90.49670785718504, 42.731101109039564]
+  },
+  {
+    "buildingId": 5,
+    "name": "Busby Hall of Engineering",
+    "category": "Academic Building",
+    "demo_description": "Used as lecture hall including laboratories and undergraduate research.",
+    "coordinates": [-90.49013146284406, 42.72893974844809]
+  },
+  {
+    "buildingId": 6,
+    "name": "Center for the Arts",
+    "category": "Athletics or Recreation",
+    "demo_description": "Provides a performing arts environment for students to learn and perform in classrooms and on stage.",
+    "coordinates": [-90.48650979988723, 42.73501434632833]
+  },
+  {
+    "buildingId": 7,
+    "name": "Central Heating Plant",
+    "category": "University Services",
+    "demo_description": "Provides heat to most campus buildings.",
+    "coordinates": [-90.4899460745213, 42.73184344384839]
+  },
+  {
+    "buildingId": 8,
+    "name": "Children's Center",
+    "category": "University Services",
+    "demo_description": "Provides childcare services with education opportunities for children at a reasonable cost.",
+    "coordinates": [-90.48754789522386, 42.73498796446111]
+  },
+  {
+    "buildingId": 9,
     "name": "Dobson Hall",
     "category": "Residence Hall",
     "demo_description": "Used as dormatory residency for students.",
     "coordinates": [-90.49420323696401, 42.733558898596954]
   },
   {
-    "buildingId": 3,
+    "buildingId": 10,
+    "name": "Doubna Hall",
+    "category": "Academic Building",
+    "demo_description": "Used as lecture hall including laboratories and undergraduate research.",
+    "coordinates": [-90.48803669460416, 42.73419687621622]
+  },
+  {
+    "buildingId": 11,
+    "name": "Gardner Hall",
+    "category": "University Services",
+    "demo_description": "Holds liberal arts and education offices, along with math learning center services.",
+    "coordinates": [-90.48927154632688, 42.73328835036722]
+  },
+  {
+    "buildingId": 12,
     "name": "Glenview Commons",
     "category": "University Services",
     "demo_description": "Used as on campus grocery market and cafeteria.",
     "coordinates": [-90.49515108244496, 42.73246002081736]
   },
   {
-    "buildingId": 4,
+    "buildingId": 13,
+    "name": "Greenhouse Complex",
+    "category": "University Services",
+    "demo_description": "Provides a hands-on learning experience for environmental and agricultural students.",
+    "coordinates": [-90.48987425937298, 42.72752720486403]
+  },
+  {
+    "buildingId": 14,
+    "name": "Hugunin Hall",
+    "category": "Residence Hall",
+    "demo_description": "Used as dormatory residency for students.",
+    "coordinates": [-90.49629490319388, 42.731922773332485]
+  },
+  {
+    "buildingId": 15,
+    "name": "Karrmann Library",
+    "category": "University Services",
+    "demo_description": "Used as place for students to find books helping their educational pursuit.",
+    "coordinates": [-90.48618548473883, 42.73341518793978]
+  },
+  {
+    "buildingId": 16,
+    "name": "Kendall Murray Baseball Field",
+    "category": "Athletics or Recreation",
+    "demo_description": "A baseball field in Kendall Murray's name.",
+    "coordinates": [-90.49975649516263, 42.73374871066204]
+  },
+  {
+    "buildingId": 17,
+    "name": "Markee Pioneer Student Center",
+    "category": "University Services",
+    "demo_description": "Provides services to help students with their education and also holds a cafeteria.",
+    "coordinates": [-90.48718658009369, 42.7326538747768]
+  },
+  {
+    "buildingId": 18,
+    "name": "McGregor Hall",
+    "category": "Residence Hall",
+    "demo_description": "Used as dormatory residency for students.",
+    "coordinates": [-90.49103019668172, 42.73327717910301]
+  },
+  {
+    "buildingId": 19,
+    "name": "Melcher Hall",
+    "category": "Residence Hall",
+    "demo_description": "Used as dormatory residency for students.",
+    "coordinates": [-90.4942965674521, 42.73414496145505]
+  },
+  {
+    "buildingId": 20,
+    "name": "Memorial Park",
+    "category": "Athletics or Recreation",
+    "demo_description": "A park with picnic tables and allows dogs.",
+    "coordinates": [-90.49959675903979, 42.72999151871239]
+  },
+  {
+    "buildingId": 21,
+    "name": "Morrow Hall",
+    "category": "Residence Hall",
+    "demo_description": "Used as dormatory residency for students.",
+    "coordinates": [-90.49610535890363, 42.73332507959359]
+  },
+  {
+    "buildingId": 22,
+    "name": "Ottensman Hall",
+    "category": "Academic Building",
+    "demo_description": "Used as lecture hall including laboratories and undergraduate research.",
+    "coordinates": [-90.4895721832068, 42.73249932283668]
+  },
+  {
+    "buildingId": 23,
+    "name": "Outdoor Track",
+    "category": "Athletics or Recreation",
+    "demo_description": "Outdooe track along with a field on the inside for discus and shotput.",
+    "coordinates": [-90.4890252996792, 42.729935321418544]
+  },
+  {
+    "buildingId": 24,
+    "name": "Pickard Hall",
+    "category": "Residence Hall",
+    "demo_description": "Used as dormatory residency for students.",
+    "coordinates": [-90.49791350404428, 42.731155753624364]
+  },
+  {
+    "buildingId": 25,
+    "name": "Pioneer Gardens",
+    "category": "Athletics or Recreation",
+    "demo_description": "Used as a research garden that is maintained by UW-Platteville students.",
+    "coordinates": [-90.48951204442174, 42.72792677390094]
+  },
+  {
+    "buildingId": 26,
+    "name": "Pioneer Stadium",
+    "category": "Athletics or Recreation",
+    "demo_description": "The Athletic stadium used for soccer and football games.",
+    "coordinates": [-90.48666321172166, 42.727882930782954]
+  },
+  {
+    "buildingId": 27,
+    "name": "Pioneer Tower",
+    "category": "University Services",
+    "demo_description": "Used for university faculty offices and academic spaces.",
+    "coordinates": [-90.48577346526466, 42.73227251790966]
+  },
+  {
+    "buildingId": 28,
+    "name": "Porter Hall",
+    "category": "Residence Hall",
+    "demo_description": "Used as dormatory residency for students.",
+    "coordinates": [-90.49540753859542, 42.733914163639945]
+  },
+  {
+    "buildingId": 29,
+    "name": "Rountree Commons",
+    "category": "Residence Hall",
+    "demo_description": "Used as dormatory residency for students.",
+    "coordinates": [-90.48437963773682, 42.72735437022995]
+  },
+  {
+    "buildingId": 30,
+    "name": "Royce Hall",
+    "category": "University Services",
+    "demo_description": "Houses student health services and the university police department.",
+    "coordinates": [-90.49108448175551, 42.73354326767861]
+  },
+  {
+    "buildingId": 31,
+    "name": "Russell Hall",
+    "category": "Academic Building",
+    "demo_description": "Serves as a central hub for academic activities, providing classrooms, laboratories, and faculty offices.",
+    "coordinates": [-90.48614370120968, 42.731754255635835]
+  },
+  {
+    "buildingId": 32,
+    "name": "Sesquicentennial Hall",
+    "category": "Academic Building",
+    "demo_description": "Used as lecture hall including laboratories and undergraduate research.",
+    "coordinates": [-90.49009539713227, 42.728545067532146]
+  },
+  {
+    "buildingId": 33,
+    "name": "Softball Field",
+    "category": "Athletics or Recreation",
+    "demo_description": "A softball field",
+    "coordinates": [-90.49836400813088, 42.73373182337404]
+  },
+  {
+    "buildingId": 34,
+    "name": "Solar Photovoltaic Array",
+    "category": "University Services",
+    "demo_description": "Provides solar power to most university buildings.",
+    "coordinates": [-90.5010750538187, 42.7321459698186]
+  },
+  {
+    "buildingId": 35,
+    "name": "Southwest Hall",
+    "category": "Residence Hall",
+    "demo_description": "Used as dormatory residency for students.",
+    "coordinates": [-90.49206913405463, 42.728361060645234]
+  },
+  {
+    "buildingId": 36,
+    "name": "Ticket Booth",
+    "category": "Athletics or Recreation",
+    "demo_description": "Used to buy tickets for games inside the pioneer stadium.",
+    "coordinates": [-90.48800689290202, 42.72847050175102]
+  },
+  {
+    "buildingId": 37,
+    "name": "Turf Field",
+    "category": "Athletics or Recreation",
+    "demo_description": "Used by clubs and sports teams to practice.",
+    "coordinates": [-90.4863628874234, 42.73026920364797]
+  },
+  {
+    "buildingId": 38,
+    "name": "Ullrich Hall",
+    "category": "Academic Building",
+    "demo_description": "Used as lecture hall including laboratories and undergraduate research.",
+    "coordinates": [-90.48632311408689, 42.73414429205282]
+  },
+  {
+    "buildingId": 39,
+    "name": "Ullsvik Hall",
+    "category": "University Services",
+    "demo_description": "Houses a variety of student resources including a few classroom; Also holds the university chancellors office",
+    "coordinates": [-90.48500136618533, 42.734612032138365]
+  },
+  {
+    "buildingId": 40,
+    "name": "Wilgus Hall",
+    "category": "Residence Hall",
+    "demo_description": "Used as dormatory residency for students.",
+    "coordinates": [-90.49235193935539, 42.73325872161971]
+  },
+  {
+    "buildingId": 41,
     "name": "Williams Fieldhouse",
     "category": "Athletics or Recreation",
     "demo_description": "Used as athletic, recreational, academic complex.",

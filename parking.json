@@ -2,25 +2,205 @@
   {
     "lotId": 1,
     "name": "P1",
-    "category": "Student Parking",
-    "coordinates": [-90.48838913043905, 42.73329490958033]
+    "category": "Faculty/Staff, Commuter, and Visitor",
+    "coordinates": [-90.48762373914433, 42.73536090662244]
   },
   {
     "lotId": 2,
     "name": "P2",
-    "category": "Faculty Parking",
-    "coordinates": [-90.49420323696401, 42.733558898596954]
+    "category": "Faculty/Staff",
+    "coordinates": [-90.48408193465166, 42.734459244380346]
   },
   {
     "lotId": 3,
     "name": "P3",
-    "category": "Commuter Parking",
-    "coordinates": [-90.49515108244496, 42.73246002081736]
+    "category": "Faculty/Staff, Commuter, and Visitor",
+    "coordinates": [-90.48526181422639, 42.7332378502049]
   },
   {
     "lotId": 4,
     "name": "P3A",
+    "category": "Faculty/Staff, Commuter, and Visitor",
+    "coordinates": [-90.48482045637591, 42.7332358588947]
+  },
+  {
+    "lotId": 5,
+    "name": "P4",
+    "category": "Faculty/Staff, Commuter, and Visitor",
+    "coordinates": [-90.4849673458923, 42.732775681577245]
+  },
+  {
+    "lotId": 6,
+    "name": "P5",
+    "category": "Faculty/Staff, Commuter, and Visitor",
+    "coordinates": [-90.48492906917934, 42.73251185828688]
+  },
+  {
+    "lotId": 7,
+    "name": "P6",
+    "category": "Faculty/Staff, Commuter, and Visitor",
+    "coordinates": [-90.48504397086298, 42.732153991297935]
+  },
+  {
+    "lotId": 8,
+    "name": "P7",
+    "category": "Residence Hall",
+    "coordinates": [-90.48518839080265, 42.73117834683831]
+  },
+  {
+    "lotId": 9,
+    "name": "P7A",
+    "category": "Residence Hall",
+    "coordinates": [-90.48518767564788, 42.730562304228826]
+  },
+  {
+    "lotId": 10,
+    "name": "P8",
+    "category": "Faculty/Staff",
+    "coordinates": [-90.48666489435624, 42.73147246385882]
+  },
+  {
+    "lotId": 11,
+    "name": "P9",
     "category": "Hourly Parking",
-    "coordinates": [-90.48830262456137, 42.73096569478455]
+    "coordinates": [-90.48732990516912, 42.7318518840048]
+  },
+  {
+    "lotId": 12,
+    "name": "P10",
+    "category": "Faculty/Staff, Commuter, and Visitor",
+    "coordinates": [-90.48826857481156, 42.72769737555437]
+  },
+  {
+    "lotId": 13,
+    "name": "P11",
+    "category": "Faculty/Staff, Commuter, and Visitor",
+    "coordinates": [-90.489403610886, 42.73183523316127]
+  },
+  {
+    "lotId": 14,
+    "name": "P12",
+    "category": "Faculty/Staff",
+    "coordinates": [-90.49001957582063, 42.7315720013558]
+  },
+  {
+    "lotId": 15,
+    "name": "P13",
+    "category": "Faculty/Staff",
+    "coordinates": [-90.49013364654824, 42.7335185009305]
+  },
+  {
+    "lotId": 16,
+    "name": "P14",
+    "category": "Faculty/Staff, Commuter, and Visitor",
+    "coordinates": [-90.49050374108288, 42.734204205103005]
+  },
+  {
+    "lotId": 17,
+    "name": "P16",
+    "category": "Residence Hall",
+    "coordinates": [-90.49131008258185, 42.73416671943694]
+  },
+  {
+    "lotId": 18,
+    "name": "P17",
+    "category": "Residence Hall",
+    "coordinates": [-90.49241149953052, 42.733576265909186]
+  },
+  {
+    "lotId": 19,
+    "name": "P18",
+    "category": "Residence Hall",
+    "coordinates": [-90.49342129234056, 42.733733406536835]
+  },
+  {
+    "lotId": 20,
+    "name": "P19",
+    "category": "Residence Hall",
+    "coordinates": [-90.49580602560316, 42.73433012805594]
+  },
+  {
+    "lotId": 21,
+    "name": "P20",
+    "category": "Residence Hall",
+    "coordinates": [-90.4972114607545, 42.733647397706086]
+  },
+  {
+    "lotId": 22,
+    "name": "P21",
+    "category": "Residence Hall",
+    "coordinates": [-90.49919180155787, 42.732314291336955]
+  },
+  {
+    "lotId": 23,
+    "name": "P22",
+    "category": "Residence Hall",
+    "coordinates": [-90.49437068975976, 42.73284375307696]
+  },
+  {
+    "lotId": 24,
+    "name": "P23",
+    "category": "Faculty/Staff",
+    "coordinates": [-90.50237972870111, 42.734135994536075]
+  },
+  {
+    "lotId": 25,
+    "name": "P24",
+    "category": "Residence Hall",
+    "coordinates": [-90.48909669406429, 42.728946949921806]
+  },
+  {
+    "lotId": 26,
+    "name": "P25",
+    "category": "Faculty/Staff, Commuter, and Visitor",
+    "coordinates": [-90.48984378504558, 42.73092361850216]
+  },
+  {
+    "lotId": 27,
+    "name": "P26",
+    "category": "Faculty/Staff, Commuter, and Visitor",
+    "coordinates": [-90.48733071630814, 42.73100519480078]
+  },
+  {
+    "lotId": 28,
+    "name": "P27",
+    "category": "Hourly Parking",
+    "coordinates": [-90.49159473264507, 42.72857975112653]
+  },
+  {
+    "lotId": 29,
+    "name": "P28",
+    "category": "Residence Hall",
+    "coordinates": [-90.49167906054893, 42.72687643683011]
+  },
+  {
+    "lotId": 30,
+    "name": "P29",
+    "category": "Faculty/Staff",
+    "coordinates": [-90.49030899309153, 42.72751376121404]
+  },
+  {
+    "lotId": 31,
+    "name": "P30",
+    "category": "Faculty/Staff, Commuter, and Visitor",
+    "coordinates": [-90.49071448229479, 42.728577315622125]
+  },
+  {
+    "lotId": 32,
+    "name": "P32",
+    "category": "Residence Hall",
+    "coordinates": [-90.48467819246885, 42.72687216142156]
+  },
+  {
+    "lotId": 33,
+    "name": "P33",
+    "category": "Faculty/Staff",
+    "coordinates": [-90.49520113342533, 42.73271630539935]
+  },
+  {
+    "lotId": 34,
+    "name": "The Circle",
+    "category": "Hourly Parking",
+    "coordinates": [-90.49722264748156, 42.731681114425946]
   }
 ]
