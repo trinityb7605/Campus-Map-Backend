@@ -1,6 +1,6 @@
 services:
   - type: web
-    name: mobile-courses-api
+    name: Campus-Map-Backend
     runtime: python
     plan: free
     buildCommand: pip install -r requirements.txt
