@@ -8,6 +8,8 @@ The service returns the JSON datasets from these endpoints:
 
 - `GET /buildings`
 - `GET /parking`
+- `GET /services`
+- `GET /departments`
 
 When deploying on Render, set the service root directory to
 `backend/render_git/Campus-Map-Backend` and use the included `render.yaml`.
