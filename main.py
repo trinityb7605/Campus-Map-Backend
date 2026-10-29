@@ -9,7 +9,7 @@ from pymongo.database import Database
 from pymongo.errors import DuplicateKeyError, PyMongoError
 
 from mainmongo import DatabaseConfigurationError, get_database
-from schema import Building, BuildingCreate, ParkingLot, ParkingLotCreate
+from schema import Building, BuildingCreate, BuildingDetails, CampusUnit, ParkingLot, ParkingLotCreate
 
 logger = logging.getLogger(__name__)
 
@@ -21,6 +21,7 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
 
 @app.exception_handler(DatabaseConfigurationError)
 async def database_configuration_error(
@@ -55,8 +56,47 @@ def get_parking_collection(
     return database["parkinglots"]
 
 
+def get_services_collection(
+    database: Annotated[Database, Depends(get_database)],
+) -> Collection:
+    return database["university_services"]
+
+
+def get_departments_collection(
+    database: Annotated[Database, Depends(get_database)],
+) -> Collection:
+    return database["departments"]
+
+
 BuildingsCollection = Annotated[Collection, Depends(get_buildings_collection)]
 ParkingCollection = Annotated[Collection, Depends(get_parking_collection)]
+ServicesCollection = Annotated[Collection, Depends(get_services_collection)]
+DepartmentsCollection = Annotated[Collection, Depends(get_departments_collection)]
+
+
+def to_unit(document: dict) -> dict:
+    # Shape university_services/departments doc for the API
+    return {
+        "id": document["_id"],
+        "name": document["name"],
+        "category": document.get("category"),
+        "buildingId": document.get("buildingId"),
+        "room": document.get("room"),
+        "description": document.get("description"),
+        "phone": document.get("phone"),
+        "email": document.get("email"),
+        "hours": document.get("hours"),
+        "hours_note": document.get("hours_note"),
+        "webpage": document.get("official_website"),
+        "catalog_webpage": document.get("catalog_website"),
+    }
+
+
+def to_units(documents) -> list[dict]:
+    return [
+        to_unit(document)
+        for document in sorted(documents, key=lambda d: d["name"].casefold())
+    ]
 
 
 @app.get("/buildings", response_model=list[Building])
@@ -89,6 +129,32 @@ def get_building(
     return building
 
 
+@app.get("/buildings/{building_id}/details", response_model=BuildingDetails)
+def get_building_details(
+    building_id: int,
+    buildings: BuildingsCollection,
+    services: ServicesCollection,
+    departments: DepartmentsCollection,
+) -> dict:
+    # Building + services & departments located in it
+    building = buildings.find_one({"buildingId": building_id})
+    if building is None:
+        raise HTTPException(status_code=404, detail="Building not found")
+
+    query = {"buildingId": building_id}
+    return {
+        "building": {
+            "id": building["buildingId"],
+            "name": building["name"],
+            "category": building["category"],
+            "coordinates": building["coordinates"],
+            "description": building.get("demo_description"),
+        },
+        "services": to_units(services.find(query)),
+        "departments": to_units(departments.find(query)),
+    }
+
+
 @app.get("/parking", response_model=list[ParkingLot])
 def get_parking(collection: ParkingCollection) -> list[dict]:
     return list(collection.find())
@@ -117,6 +183,32 @@ def get_parking_lot(
     if parking_lot is None:
         raise HTTPException(status_code=404, detail="Parking lot not found")
     return parking_lot
+
+
+@app.get("/services", response_model=list[CampusUnit])
+def get_services(collection: ServicesCollection) -> list[dict]:
+    return [to_unit(document) for document in collection.find()]
+
+
+@app.get("/services/{service_id}", response_model=CampusUnit)
+def get_service(service_id: str, collection: ServicesCollection) -> dict:
+    service = collection.find_one({"_id": service_id})
+    if service is None:
+        raise HTTPException(status_code=404, detail="Service not found")
+    return to_unit(service)
+
+
+@app.get("/departments", response_model=list[CampusUnit])
+def get_departments(collection: DepartmentsCollection) -> list[dict]:
+    return [to_unit(document) for document in collection.find()]
+
+
+@app.get("/departments/{department_id}", response_model=CampusUnit)
+def get_department(department_id: str, collection: DepartmentsCollection) -> dict:
+    department = collection.find_one({"_id": department_id})
+    if department is None:
+        raise HTTPException(status_code=404, detail="Department not found")
+    return to_unit(department)
 
 
 @app.get("/search", response_model=list[Building])

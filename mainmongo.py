@@ -15,6 +15,8 @@ def _connect(uri: str, database_name: str) -> Database:
     database = client[database_name]
     database["buildings"].create_index("buildingId", unique=True)
     database["parkinglots"].create_index("lotId", unique=True)
+    database["university_services"].create_index("buildingId")
+    database["departments"].create_index("buildingId")
     return database
 
 
