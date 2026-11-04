@@ -9,9 +9,12 @@ Flow for every question:
   4. CITE      - the model ends with a "SOURCES:" line; we validate it against the records
                  we actually sent and return them so the app can open that building/marker.
 
-Environment variables:
-  OPENAI_API_KEY  (required)
-  OPENAI_MODEL    (optional, default below) - change the model without touching code
+Environment variables (works with OpenAI or any OpenAI-compatible provider, e.g. Gemini):
+  OPENAI_API_KEY           (required) the provider's API key
+  OPENAI_BASE_URL          (optional) e.g. https://generativelanguage.googleapis.com/v1beta/openai/
+  OPENAI_MODEL             (optional, default below) exact model ID from the provider
+  OPENAI_REASONING_EFFORT  (optional) e.g. "low" for Gemini thinking models
+  OPENAI_MAX_TOKENS_PARAM  (optional) "max_completion_tokens" (default) or "max_tokens"
 """
 
 import logging
@@ -221,29 +224,42 @@ def build_messages(message: str, history: list[dict], context: str) -> list[dict
 # 3. GENERATE
 # --------------------------------------------------------------------------
 @lru_cache(maxsize=1)
-def _client_for(api_key: str):
+def _client_for(api_key: str, base_url: str | None):
     from openai import OpenAI  # imported lazily so the rest of the API works without it
-    return OpenAI(api_key=api_key, timeout=30.0, max_retries=2)
+    return OpenAI(api_key=api_key, base_url=base_url, timeout=30.0, max_retries=2)
 
 
 def get_client():
     api_key = os.getenv("OPENAI_API_KEY")
     if not api_key:
         raise ChatUnavailableError("OPENAI_API_KEY must be set to use the chat assistant.")
-    return _client_for(api_key)
+    # empty string -> None -> the OpenAI SDK's default endpoint
+    return _client_for(api_key, os.getenv("OPENAI_BASE_URL") or None)
 
 
 def ask_llm(client, messages: list[dict]) -> str:
     from openai import OpenAIError
+
+    options = {
+        "model": os.getenv("OPENAI_MODEL", DEFAULT_MODEL),
+        "messages": messages,
+        # Parameter name is configurable in case a provider only accepts "max_tokens"
+        os.getenv("OPENAI_MAX_TOKENS_PARAM", "max_completion_tokens"): 1500,
+    }
+    effort = os.getenv("OPENAI_REASONING_EFFORT")  # e.g. "low" for Gemini thinking models
+    if effort:
+        options["reasoning_effort"] = effort
+
     try:
-        response = client.chat.completions.create(
-            model=os.getenv("OPENAI_MODEL", DEFAULT_MODEL),
-            messages=messages,
-            max_completion_tokens=1500,  # reasoning models spend part of this "thinking"
-        )
+        response = client.chat.completions.create(**options)
     except OpenAIError as exc:
-        # log the error type only - never the user's question or the API key
-        logger.error("OpenAI request failed (%s)", type(exc).__name__)
+        # log the error type/status only - never the user's question or the API key
+        logger.error(
+            "LLM request failed (%s) status=%s code=%s",
+            type(exc).__name__,
+            getattr(exc, "status_code", None),
+            getattr(exc, "code", None),
+        )
         raise ChatUnavailableError("The AI assistant is temporarily unavailable.") from exc
     return (response.choices[0].message.content or "").strip()
 
