@@ -17,6 +17,29 @@ def _connect(uri: str, database_name: str) -> Database:
     database["parkinglots"].create_index("lotId", unique=True)
     database["university_services"].create_index("buildingId")
     database["departments"].create_index("buildingId")
+    
+    # Text indexes power the AI assistant's retrieval ($text search).
+    # MongoDB allows ONE text index per collection; weights make name matches rank highest.
+    database["buildings"].create_index(
+        [("name", "text"), ("category", "text"), ("demo_description", "text")],
+        weights={"name": 10, "category": 3, "demo_description": 1},
+        name="buildings_text",
+    )
+    database["departments"].create_index(
+        [("name", "text"), ("category", "text"), ("description", "text")],
+        weights={"name": 10, "category": 3, "description": 2},
+        name="departments_text",
+    )
+    database["university_services"].create_index(
+        [("name", "text"), ("category", "text"), ("description", "text")],
+        weights={"name": 10, "category": 3, "description": 2},
+        name="university_services_text",
+    )
+    database["parkinglots"].create_index(
+        [("name", "text"), ("category", "text")],
+        weights={"name": 10, "category": 3},
+        name="parkinglots_text",
+    )
     return database
 
 
