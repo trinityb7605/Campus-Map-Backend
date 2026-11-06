@@ -25,7 +25,7 @@ from functools import lru_cache
 
 logger = logging.getLogger(__name__)
 
-DEFAULT_MODEL = "gemini-2.5-flash"
+DEFAULT_MODEL = "gemini-3.8-flash"
 
 # How many records to pull from each collection per question
 LIMITS = {"buildings": 4, "departments": 4, "university_services": 4, "parkinglots": 2}
@@ -244,7 +244,7 @@ def ask_llm(client, messages: list[dict]) -> str:
         "model": os.getenv("OPENAI_MODEL", DEFAULT_MODEL),
         "messages": messages,
         # Parameter name is configurable in case a provider only accepts "max_tokens"
-        os.getenv("OPENAI_MAX_TOKENS_PARAM", "max_completion_tokens"): 1500,
+        os.getenv("OPENAI_MAX_TOKENS_PARAM", "max_completion_tokens"): 4000,
     }
     effort = os.getenv("OPENAI_REASONING_EFFORT")  # e.g. "low" for Gemini thinking models
     if effort:
@@ -254,14 +254,18 @@ def ask_llm(client, messages: list[dict]) -> str:
         response = client.chat.completions.create(**options)
     except OpenAIError as exc:
         logger.error(
-            "OpenAI request failed (%s) status=%s code=%s message=%s",
+            "OpenAI request failed (%s) status=%s code=%s body=%s",
             type(exc).__name__,
             getattr(exc, "status_code", None),
             getattr(exc, "code", None),
-            getattr(exc, "message", None),
+            getattr(exc, "body", None),
         )
         raise ChatUnavailableError("The AI assistant is temporarily unavailable.") from exc
-    return (response.choices[0].message.content or "").strip()
+    choice = response.choices[0] if response.choices else None
+    text = ((choice.message.content if choice else None) or "").strip()
+    if not text:
+        logger.warning("Empty answer from model (finish_reason=%s)", getattr(choice, "finish_reason", None))
+    return text
 
 
 # --------------------------------------------------------------------------
