@@ -25,7 +25,7 @@ from functools import lru_cache
 
 logger = logging.getLogger(__name__)
 
-DEFAULT_MODEL = "gpt-5.4-mini"
+DEFAULT_MODEL = "gemini-2.0-flash"
 
 # How many records to pull from each collection per question
 LIMITS = {"buildings": 4, "departments": 4, "university_services": 4, "parkinglots": 2}
