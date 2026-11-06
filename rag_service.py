@@ -26,6 +26,7 @@ from functools import lru_cache
 logger = logging.getLogger(__name__)
 
 DEFAULT_MODEL = "gemini-3.8-flash"
+FALLBACK_MODEL = "gemini-3.8-flash-lite" # fallback if the main model is unavailable
 
 # How many records to pull from each collection per question
 LIMITS = {"buildings": 4, "departments": 4, "university_services": 4, "parkinglots": 2}
@@ -226,7 +227,7 @@ def build_messages(message: str, history: list[dict], context: str) -> list[dict
 @lru_cache(maxsize=1)
 def _client_for(api_key: str, base_url: str | None):
     from openai import OpenAI  # imported lazily so the rest of the API works without it
-    return OpenAI(api_key=api_key, base_url=base_url, timeout=30.0, max_retries=2)
+    return OpenAI(api_key=api_key, base_url=base_url, timeout=20.0, max_retries=1)
 
 
 def get_client():
@@ -237,35 +238,51 @@ def get_client():
     return _client_for(api_key, os.getenv("OPENAI_BASE_URL") or None)
 
 
+RETRYABLE_STATUS = {429, 500, 502, 503, 504}
+
 def ask_llm(client, messages: list[dict]) -> str:
     from openai import OpenAIError
 
-    options = {
-        "model": os.getenv("OPENAI_MODEL", DEFAULT_MODEL),
-        "messages": messages,
-        # Parameter name is configurable in case a provider only accepts "max_tokens"
-        os.getenv("OPENAI_MAX_TOKENS_PARAM", "max_completion_tokens"): 4000,
-    }
-    effort = os.getenv("OPENAI_REASONING_EFFORT")  # e.g. "low" for Gemini thinking models
-    if effort:
-        options["reasoning_effort"] = effort
+    models = [os.getenv("OPENAI_MODEL", DEFAULT_MODEL)]
+    fallback = os.getenv("OPENAI_FALLBACK_MODEL", FALLBACK_MODEL)
+    
+    if fallback and fallback not in models:
+        models.append(fallback)
 
-    try:
-        response = client.chat.completions.create(**options)
-    except OpenAIError as exc:
-        logger.error(
-            "OpenAI request failed (%s) status=%s code=%s body=%s",
-            type(exc).__name__,
-            getattr(exc, "status_code", None),
-            getattr(exc, "code", None),
-            getattr(exc, "body", None),
-        )
-        raise ChatUnavailableError("The AI assistant is temporarily unavailable.") from exc
-    choice = response.choices[0] if response.choices else None
-    text = ((choice.message.content if choice else None) or "").strip()
-    if not text:
-        logger.warning("Empty answer from model (finish_reason=%s)", getattr(choice, "finish_reason", None))
-    return text
+    last_exc = None
+    for model in models:
+        options = {
+            "model": model,
+            "messages": messages,
+            os.getenv("OPENAI_MAX_TOKENS_PARAM", "max_completion_tokens"): 4000,
+        }
+        effort = os.getenv("OPENAI_REASONING_EFFORT")
+        if effort:
+            options["reasoning_effort"] = effort
+
+        try:
+            response = client.chat.completions.create(**options)
+        except OpenAIError as exc:
+            logger.error(
+                "OpenAI request failed (%s) model=%s status=%s body=%s",
+                type(exc).__name__, model,
+                getattr(exc, "status_code", None), getattr(exc, "body", None),
+            )
+
+            last_exc = exc
+            status = getattr(exc, "status_code", None)
+            if status is None or status in RETRYABLE_STATUS:
+                continue  # temporary: try the next model
+            break  # 400/401/404 etc: config problem, a fallback won't help
+        
+        choice = response.choices[0] if response.choices else None
+        text = ((choice.message.content if choice else None) or "").strip()
+        if not text:
+            logger.warning("Empty answer (model=%s finish_reason=%s)", model, getattr(choice, "finish_reason", None))
+            continue  # try the fallback model
+        return text
+
+    raise ChatUnavailableError("The AI assistant is temporarily unavailable.") from last_exc
 
 
 # --------------------------------------------------------------------------
