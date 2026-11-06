@@ -25,8 +25,9 @@ from functools import lru_cache
 
 logger = logging.getLogger(__name__)
 
-DEFAULT_MODEL = "gemini-3.8-flash"
-FALLBACK_MODEL = "gemini-3.8-flash-lite" # fallback if the main model is unavailable
+# DEFAULT_MODEL = "gemini-3.8-flash"
+DEFAULT_MODEL = "gemini-3.5-flash-lite"
+FALLBACK_MODEL = "gemini-3.5-flash-lite" # fallback if the main model is unavailable
 
 # How many records to pull from each collection per question
 LIMITS = {"buildings": 4, "departments": 4, "university_services": 4, "parkinglots": 2}
@@ -227,7 +228,7 @@ def build_messages(message: str, history: list[dict], context: str) -> list[dict
 @lru_cache(maxsize=1)
 def _client_for(api_key: str, base_url: str | None):
     from openai import OpenAI  # imported lazily so the rest of the API works without it
-    return OpenAI(api_key=api_key, base_url=base_url, timeout=20.0, max_retries=1)
+    return OpenAI(api_key=api_key, base_url=base_url, timeout=45.0, max_retries=1)
 
 
 def get_client():
