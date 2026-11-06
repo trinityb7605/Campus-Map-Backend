@@ -25,7 +25,7 @@ from functools import lru_cache
 
 logger = logging.getLogger(__name__)
 
-DEFAULT_MODEL = "gemini-2.0-flash"
+DEFAULT_MODEL = "gemini-2.5-flash"
 
 # How many records to pull from each collection per question
 LIMITS = {"buildings": 4, "departments": 4, "university_services": 4, "parkinglots": 2}
@@ -254,10 +254,11 @@ def ask_llm(client, messages: list[dict]) -> str:
         response = client.chat.completions.create(**options)
     except OpenAIError as exc:
         logger.error(
-            "OpenAI request failed (%s) status=%s code=%s",
+            "OpenAI request failed (%s) status=%s code=%s message=%s",
             type(exc).__name__,
             getattr(exc, "status_code", None),
             getattr(exc, "code", None),
+            getattr(exc, "message", None),
         )
         raise ChatUnavailableError("The AI assistant is temporarily unavailable.") from exc
     return (response.choices[0].message.content or "").strip()
