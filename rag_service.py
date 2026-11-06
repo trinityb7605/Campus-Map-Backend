@@ -253,9 +253,8 @@ def ask_llm(client, messages: list[dict]) -> str:
     try:
         response = client.chat.completions.create(**options)
     except OpenAIError as exc:
-        # log the error type/status only - never the user's question or the API key
         logger.error(
-            "LLM request failed (%s) status=%s code=%s",
+            "OpenAI request failed (%s) status=%s code=%s",
             type(exc).__name__,
             getattr(exc, "status_code", None),
             getattr(exc, "code", None),
