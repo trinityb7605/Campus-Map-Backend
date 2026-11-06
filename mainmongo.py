@@ -17,7 +17,7 @@ def _connect(uri: str, database_name: str) -> Database:
     database["parkinglots"].create_index("lotId", unique=True)
     database["university_services"].create_index("buildingId")
     database["departments"].create_index("buildingId")
-    
+
     # Text indexes power the AI assistant's retrieval ($text search).
     # MongoDB allows ONE text index per collection; weights make name matches rank highest.
     database["buildings"].create_index(

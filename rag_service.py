@@ -32,7 +32,6 @@ LIMITS = {"buildings": 4, "departments": 4, "university_services": 4, "parkinglo
 EXPAND_BUILDINGS = 2        # for the top N matched buildings, also fetch what's inside them
 EXPAND_PER_COLLECTION = 4   # ...up to this many departments / services each
 MAX_CONTEXT_RECORDS = 14    # hard cap on records sent to the model
-MAX_OUTPUT_TOKENS = 3000    # ceiling only; Gemini 'thinking' tokens count toward it
 MAX_HISTORY_TURNS = 6       # previous chat messages sent for follow-up questions
 SHORT_QUESTION_WORDS = 6    # short follow-ups ("what are its hours?") borrow the previous question
 
@@ -245,7 +244,7 @@ def ask_llm(client, messages: list[dict]) -> str:
         "model": os.getenv("OPENAI_MODEL", DEFAULT_MODEL),
         "messages": messages,
         # Parameter name is configurable in case a provider only accepts "max_tokens"
-        os.getenv("OPENAI_MAX_TOKENS_PARAM", "max_completion_tokens"): MAX_OUTPUT_TOKENS,
+        os.getenv("OPENAI_MAX_TOKENS_PARAM", "max_completion_tokens"): 1500,
     }
     effort = os.getenv("OPENAI_REASONING_EFFORT")  # e.g. "low" for Gemini thinking models
     if effort:
@@ -254,26 +253,15 @@ def ask_llm(client, messages: list[dict]) -> str:
     try:
         response = client.chat.completions.create(**options)
     except OpenAIError as exc:
-        status = getattr(exc, "status_code", None)
         # log the error type/status only - never the user's question or the API key
         logger.error(
             "LLM request failed (%s) status=%s code=%s",
-            type(exc).__name__, status, getattr(exc, "code", None),
+            type(exc).__name__,
+            getattr(exc, "status_code", None),
+            getattr(exc, "code", None),
         )
-        # DEBUG: the error type is included in the response so it can be read from /docs.
-        # Remove the parenthesised part once the assistant is stable.
-        raise ChatUnavailableError(
-            f"The AI assistant is temporarily unavailable ({type(exc).__name__}, status {status})."
-        ) from exc
-
-    choice = response.choices[0]
-    text = (choice.message.content or "").strip()
-    if not text:
-        logger.error("LLM returned empty content (finish_reason=%s)", choice.finish_reason)
-        raise ChatUnavailableError(
-            f"The AI assistant returned an empty answer (finish_reason={choice.finish_reason})."
-        )
-    return text
+        raise ChatUnavailableError("The AI assistant is temporarily unavailable.") from exc
+    return (response.choices[0].message.content or "").strip()
 
 
 # --------------------------------------------------------------------------

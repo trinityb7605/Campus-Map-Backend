@@ -159,6 +159,7 @@ def get_building_details(
             "category": building["category"],
             "coordinates": building["coordinates"],
             "description": building.get("demo_description"),
+            "images": building.get("images", []),
         },
         "services": to_units(services.find(query)),
         "departments": to_units(departments.find(query)),
