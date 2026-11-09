@@ -25,19 +25,18 @@ from functools import lru_cache
 
 logger = logging.getLogger(__name__)
 
-# DEFAULT_MODEL = "gemini-3.8-flash"
 DEFAULT_MODEL = "gemini-3.5-flash-lite"
-FALLBACK_MODEL = "gemini-3.5-flash-lite" # fallback if the main model is unavailable
+FALLBACK_MODEL = "gemini-3.5-flash-lite" # fallback if main model is unavailable
 
-# How many records to pull from each collection per question
+# limit search results to not send too much campus data to model
 LIMITS = {"buildings": 4, "departments": 4, "university_services": 4, "parkinglots": 2}
-EXPAND_BUILDINGS = 2        # for the top N matched buildings, also fetch what's inside them
-EXPAND_PER_COLLECTION = 4   # ...up to this many departments / services each
-MAX_CONTEXT_RECORDS = 14    # hard cap on records sent to the model
+EXPAND_BUILDINGS = 2        # for top N matched buildings, also fetch what's inside
+EXPAND_PER_COLLECTION = 4   # ...up to this many departments/services each
+MAX_CONTEXT_RECORDS = 14    # hard cap on records sent to model
 MAX_HISTORY_TURNS = 6       # previous chat messages sent for follow-up questions
-SHORT_QUESTION_WORDS = 6    # short follow-ups ("what are its hours?") borrow the previous question
+SHORT_QUESTION_WORDS = 6    # short follow-ups ("what are its hours?") borrow previous question
 
-# type tag used in the prompt / sources  ->  (collection name, id field)
+# connect name used in chat to mongo collection & id field
 TYPES = {
     "building": ("buildings", "buildingId"),
     "department": ("departments", "_id"),
@@ -49,6 +48,7 @@ COLLECTION_TO_TYPE = {coll: t for t, (coll, _) in TYPES.items()}
 DAYS = ["monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday"]
 DAY_ABBR = {d: d[:3].title() for d in DAYS}
 
+# Rules to tell model to answer from campus data & add source tags
 SYSTEM_PROMPT = """You are the UW-Platteville Campus Map assistant inside a mobile campus map app. \
 You help students and visitors find buildings, academic departments, university services and parking.
 
@@ -73,7 +73,6 @@ square brackets in the data: SOURCES: building:5, service:service_example
 
 Current date and time: {now}"""
 
-
 class ChatUnavailableError(RuntimeError):
     """The assistant cannot answer right now (missing key, OpenAI outage, ...)."""
 
@@ -81,14 +80,17 @@ class ChatUnavailableError(RuntimeError):
 # --------------------------------------------------------------------------
 # 1. RETRIEVE
 # --------------------------------------------------------------------------
+
+# remove punctuation before sending question to mongo text search
 def _clean_query(text: str) -> str:
-    # $text treats "quotes" and a leading "-" as operators; keep plain words only
+    # keep letters & numbers so punctuation can't change mongo's search rules
     return " ".join(re.findall(r"[A-Za-z0-9]+", text))
 
-
+# search 1 mongo collection & return its best matching records
 def _text_search(collection, query: str, limit: int) -> list[dict]:
     if not query or limit <= 0:
         return []
+    # mongo text indexes return matching records with a score for relevance
     cursor = (
         collection.find(
             {"$text": {"$search": query}},
@@ -99,33 +101,37 @@ def _text_search(collection, query: str, limit: int) -> list[dict]:
     )
     return list(cursor)
 
-
+# add last question when new message is too short to search by itself
 def build_search_query(message: str, history: list[dict]) -> str:
     """Short follow-ups like 'what are its hours?' borrow the previous user question."""
     query = _clean_query(message)
     if len(query.split()) <= SHORT_QUESTION_WORDS:
+        # add last user question so "what are its hours?" has a search topic
         previous = [m["content"] for m in history if m["role"] == "user"]
         if previous:
             query = f"{query} {_clean_query(previous[-1])}"
     return query
 
-
+# find matching records & add related buildings, departments, and services
 def retrieve(db, query: str) -> list[tuple[str, dict]]:
     """Return an ordered, de-duplicated list of (type, document), best matches first."""
+    # same id can exist in different collections, so include type
     found: dict[tuple[str, str], tuple[str, dict]] = {}
 
+    # add record only once, using its type & id to identify
     def add(type_: str, doc: dict) -> None:
         id_field = TYPES[type_][1]
+        # keep first copy if record is found by more than one search
         found.setdefault((type_, str(doc[id_field])), (type_, doc))
 
-    # --- direct text matches
+    # search each collection & keep highest scoring matches
     matched: dict[str, list[dict]] = {}
     for type_, (coll, _) in TYPES.items():
         matched[type_] = _text_search(db[coll], query, LIMITS[coll])
         for doc in matched[type_]:
             add(type_, doc)
 
-    # --- a matched service/department -> include the building it is in
+    # add building for any matched department/service
     building_ids = {d.get("buildingId") for t in ("department", "service") for d in matched[t]}
     have = {d["buildingId"] for t, d in found.values() if t == "building"}
     missing = [b for b in building_ids if b is not None and b not in have]
@@ -133,7 +139,7 @@ def retrieve(db, query: str) -> list[tuple[str, dict]]:
         for doc in db["buildings"].find({"buildingId": {"$in": missing}}):
             add("building", doc)
 
-    # --- a matched building -> include the departments/services inside it
+    # add departments & services inside best matched buildings
     for building in matched["building"][:EXPAND_BUILDINGS]:
         for type_ in ("department", "service"):
             coll = TYPES[type_][0]
@@ -144,12 +150,15 @@ def retrieve(db, query: str) -> list[tuple[str, dict]]:
 
 
 # --------------------------------------------------------------------------
-# 2. AUGMENT  (records -> prompt text)
+# 2. AUGMENT (records -> prompt text)
 # --------------------------------------------------------------------------
+
+# turn daily hours into shorter ranges when neighboring days match
 def format_hours(hours: dict | None) -> str | None:
     """{'monday': 'X', ..., 'saturday': 'Closed'} -> 'Mon-Fri: X; Sat-Sun: Closed'"""
     if not hours:
         return None
+    # combine consecutive days when hours match
     days = [d for d in DAYS if hours.get(d)]
     groups: list[list] = []  # [first_day, last_day, value]
     for d in days:
@@ -162,8 +171,9 @@ def format_hours(hours: dict | None) -> str | None:
         for a, b, v in groups
     )
 
-
+# turn 1 campus record into readable text with a tag for citations
 def format_record(type_: str, doc: dict, building_names: dict[int, str]) -> str:
+    # put source tag in prompt, so it can be checked after model replies
     tag = f"[{type_}:{doc[TYPES[type_][1]]}]"
     parts = [f"{tag} {doc['name']}", f"Category: {doc.get('category')}"]
 
@@ -190,29 +200,34 @@ def format_record(type_: str, doc: dict, building_names: dict[int, str]) -> str:
 
     return " | ".join(parts)
 
-
+# combine records into campus data text that goes into prompt
 def build_context(records: list[tuple[str, dict]], db) -> str:
     if not records:
         return "(no matching records found)"
-    # building names for the "Location:" line of departments/services
+    # get building names to show clear locations for departments/services
     names = {d["buildingId"]: d["name"] for t, d in records if t == "building"}
     needed = {d.get("buildingId") for t, d in records if t in ("department", "service")} - set(names) - {None}
     if needed:
+        # related building might not have been included in search results
         for doc in db["buildings"].find({"buildingId": {"$in": list(needed)}}):
             names[doc["buildingId"]] = doc["name"]
     return "\n".join(format_record(t, d, names) for t, d in records)
 
-
+# get current time in Central Time for questions about open hours
 def current_time_text() -> str:
     try:
-        from zoneinfo import ZoneInfo  # needs the `tzdata` package on Windows
+        from zoneinfo import ZoneInfo  # needs `tzdata` package on Windows
+        # campus hours use Central Time
         now = datetime.now(ZoneInfo("America/Chicago"))
         return now.strftime("%A, %B %d, %Y, %I:%M %p") + " (Central Time)"
     except Exception:
         return datetime.now().strftime("%A, %B %d, %Y, %I:%M %p")
 
-
+# build system, chat history, and question messages for model
 def build_messages(message: str, history: list[dict], context: str) -> list[dict]:
+    # First: send rules
+    # Second: recent conversation
+    # Last: campus data with new question
     messages = [{"role": "system", "content": SYSTEM_PROMPT.format(now=current_time_text())}]
     messages += [{"role": m["role"], "content": m["content"]} for m in history[-MAX_HISTORY_TURNS:]]
     messages.append({
@@ -225,28 +240,32 @@ def build_messages(message: str, history: list[dict], context: str) -> list[dict
 # --------------------------------------------------------------------------
 # 3. GENERATE
 # --------------------------------------------------------------------------
+
+# create 1 reusable OpenAI-compatible client for connection settings
 @lru_cache(maxsize=1)
 def _client_for(api_key: str, base_url: str | None):
-    from openai import OpenAI  # imported lazily so the rest of the API works without it
+    # create provider connection once & reuse it for later questions
+    from openai import OpenAI  # imported lazily so rest of API works without it
     return OpenAI(api_key=api_key, base_url=base_url, timeout=45.0, max_retries=1)
 
-
+# check API key & create/reuse provider client
 def get_client():
     api_key = os.getenv("OPENAI_API_KEY")
     if not api_key:
         raise ChatUnavailableError("OPENAI_API_KEY must be set to use the chat assistant.")
-    # empty string -> None -> the OpenAI SDK's default endpoint
+    # empty string -> None -> OpenAI SDK's default endpoint
     return _client_for(api_key, os.getenv("OPENAI_BASE_URL") or None)
-
 
 RETRYABLE_STATUS = {429, 500, 502, 503, 504}
 
+# ask provider for answer, try fallback model if needed
 def ask_llm(client, messages: list[dict]) -> str:
     from openai import OpenAIError
 
     models = [os.getenv("OPENAI_MODEL", DEFAULT_MODEL)]
     fallback = os.getenv("OPENAI_FALLBACK_MODEL", FALLBACK_MODEL)
     
+    # try backup model too, unless it's the same as main model
     if fallback and fallback not in models:
         models.append(fallback)
 
@@ -272,27 +291,29 @@ def ask_llm(client, messages: list[dict]) -> str:
 
             last_exc = exc
             status = getattr(exc, "status_code", None)
+            # try another model for temporary errors, but stop for config errors
             if status is None or status in RETRYABLE_STATUS:
-                continue  # temporary: try the next model
-            break  # 400/401/404 etc: config problem, a fallback won't help
+                continue  # temporary: try next model
+            break  # 400/401/404 etc: config problem, fallback won't help
         
         choice = response.choices[0] if response.choices else None
         text = ((choice.message.content if choice else None) or "").strip()
         if not text:
             logger.warning("Empty answer (model=%s finish_reason=%s)", model, getattr(choice, "finish_reason", None))
-            continue  # try the fallback model
+            continue  # try fallback model
         return text
 
     raise ChatUnavailableError("The AI assistant is temporarily unavailable.") from last_exc
 
 
 # --------------------------------------------------------------------------
-# 4. CITE  (split the answer from the SOURCES line)
+# 4. CITE  (split answer from SOURCES line)
 # --------------------------------------------------------------------------
 _SOURCES_RE = re.compile(r"^\s*SOURCES:\s*(.*)$", re.IGNORECASE | re.MULTILINE)
 
-
+# remove model's source line & return only citations for known records
 def split_answer(raw: str, records: list[tuple[str, dict]]) -> tuple[str, list[dict]]:
+    # only tags for records sent are allowed to become app sources
     by_tag = {f"{t}:{d[TYPES[t][1]]}": (t, d) for t, d in records}
     match = _SOURCES_RE.search(raw)
     if not match:
@@ -302,7 +323,8 @@ def split_answer(raw: str, records: list[tuple[str, dict]]) -> tuple[str, list[d
     sources, seen = [], set()
     for tag in re.split(r"[,\s]+", match.group(1).strip("[] ")):
         tag = tag.strip("[]")
-        if tag in by_tag and tag not in seen:  # drop any id the model made up
+        if tag in by_tag and tag not in seen:  # drop made up id models
+            # don't return same source twice
             seen.add(tag)
             type_, doc = by_tag[tag]
             sources.append({
@@ -317,11 +339,14 @@ def split_answer(raw: str, records: list[tuple[str, dict]]) -> tuple[str, list[d
 # --------------------------------------------------------------------------
 # Public entry point
 # --------------------------------------------------------------------------
+
+# run full retrieve, prompt, answer, and citation flow for 1 question
 def answer_question(db, message: str, history: list[dict] | None = None, client=None) -> dict:
     """Answer one question. `client` can be injected for tests."""
     history = history or []
     client = client or get_client()
 
+    # find relevant records, make prompt text, ask model, then check sources
     query = build_search_query(message, history)
     records = retrieve(db, query)
     context = build_context(records, db)
