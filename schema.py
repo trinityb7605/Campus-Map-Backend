@@ -69,7 +69,7 @@ class BuildingDetails(BaseModel):
     services: list[CampusUnit]
     departments: list[CampusUnit]
 
-# store 1 user or assistant message in ai chat history
+# store 1 user or assistant message in ai history
 class AiMessage(BaseModel):
     # only these two roles are allowed, and message text can't be blank
     role: Literal["user", "assistant"]

@@ -7,7 +7,7 @@ from pymongo.database import Database
 class DatabaseConfigurationError(RuntimeError):
     pass
 
-# connect to MongoDB & set up indexes API uses for lookups & chat search
+# connect to MongoDB & set up indexes API uses for lookups & ai search
 @lru_cache(maxsize=1)
 def _connect(uri: str, database_name: str) -> Database:
     # wait up to 5 seconds when can't reach MongoDB
@@ -20,7 +20,7 @@ def _connect(uri: str, database_name: str) -> Database:
     database["university_services"].create_index("buildingId")
     database["departments"].create_index("buildingId")
 
-    # let chat assistant search fields, ranking names above descriptions (MongoDB allows 1 text index per collection)
+    # let ai assistant search fields, ranking names above descriptions (MongoDB allows 1 text index per collection)
     database["buildings"].create_index(
         [("name", "text"), ("category", "text"), ("demo_description", "text")],
         weights={"name": 10, "category": 3, "demo_description": 1},
