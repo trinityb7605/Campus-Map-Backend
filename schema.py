@@ -69,21 +69,21 @@ class BuildingDetails(BaseModel):
     services: list[CampusUnit]
     departments: list[CampusUnit]
 
-# store 1 user or assistant message in chat history
-class ChatMessage(BaseModel):
+# store 1 user or assistant message in ai chat history
+class AiMessage(BaseModel):
     # only these two roles are allowed, and message text can't be blank
     role: Literal["user", "assistant"]
     content: Annotated[str, StringConstraints(min_length=1, max_length=1000)]
 
-# validate chat question & optional earlier messages
-class ChatRequest(BaseModel):
+# validate ai question & optional earlier messages
+class AiRequest(BaseModel):
     # trim whitespace and limit the question size
     message: Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=500)]
     # Previous turns of this conversation (oldest first) so follow-up questions work
-    history: list[ChatMessage] = Field(default_factory=list, max_length=20)
+    history: list[AiMessage] = Field(default_factory=list, max_length=20)
 
-# describe campus record chat answer used
-class ChatSource(BaseModel):
+# describe campus record ai answer used
+class AiSource(BaseModel):
     # limit sources to record types the app knows how to display
     type: Literal["building", "department", "service", "parking"]
     id: str
@@ -91,6 +91,6 @@ class ChatSource(BaseModel):
     buildingId: int | None = None  # lets the app open/zoom to this building
 
 # shape answer & optional source list for API response
-class ChatResponse(BaseModel):
+class AiResponse(BaseModel):
     answer: str
-    sources: list[ChatSource] = Field(default_factory=list)
+    sources: list[AiSource] = Field(default_factory=list)
