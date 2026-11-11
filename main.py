@@ -7,8 +7,8 @@ from pymongo.collection import Collection
 from pymongo.database import Database
 from pymongo.errors import DuplicateKeyError, PyMongoError
 from mainmongo import DatabaseConfigurationError, get_database
-from schema import Building, BuildingCreate, BuildingDetails, CampusUnit, ParkingLot, ParkingLotCreate, AiRequest, AiResponse
-from rag_service import AiUnavailableError, answer_question
+from schema import Building, BuildingCreate, BuildingDetails, CampusUnit, ParkingLot, ParkingLotCreate, ChatRequest, ChatResponse
+from rag_service import ChatUnavailableError, answer_question
 
 logger = logging.getLogger(__name__)
 
@@ -44,10 +44,10 @@ async def database_operation_error(
         content={"detail": "The database is temporarily unavailable."},
     )
 
-# return service error when ai provider can't answer
-@app.exception_handler(AiUnavailableError)
-async def ai_unavailable_error(
-    _request: Request, exc: AiUnavailableError
+# return service error when chat provider can't answer
+@app.exception_handler(ChatUnavailableError)
+async def chat_unavailable_error(
+    _request: Request, exc: ChatUnavailableError
 ) -> JSONResponse:
     return JSONResponse(
         status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
@@ -239,10 +239,10 @@ def search_buildings(
         if query in building["name"].casefold()
     ]
 
-# answer question using campus records & RAG service
-@app.post("/askAI", response_model=AiResponse)
-def askAI(
-    request: AiRequest,
+# answer chat question using campus records & RAG service
+@app.post("/chat", response_model=ChatResponse)
+def chat(
+    request: ChatRequest,
     database: Annotated[Database, Depends(get_database)],
 ) -> dict:
     # pass earlier turns so short follow-up questions have context

@@ -33,10 +33,10 @@ LIMITS = {"buildings": 4, "departments": 4, "university_services": 4, "parkinglo
 EXPAND_BUILDINGS = 2        # for top N matched buildings, also fetch what's inside
 EXPAND_PER_COLLECTION = 4   # ...up to this many departments/services each
 MAX_CONTEXT_RECORDS = 14    # hard cap on records sent to model
-MAX_HISTORY_TURNS = 6       # previous ai messages sent for follow-up questions
+MAX_HISTORY_TURNS = 6       # previous chat messages sent for follow-up questions
 SHORT_QUESTION_WORDS = 6    # short follow-ups ("what are its hours?") borrow previous question
 
-# connect name used in ai to mongo collection & id field
+# connect name used in chat to mongo collection & id field
 TYPES = {
     "building": ("buildings", "buildingId"),
     "department": ("departments", "_id"),
@@ -73,7 +73,7 @@ square brackets in the data: SOURCES: building:5, service:service_example
 
 Current date and time: {now}"""
 
-class AiUnavailableError(RuntimeError):
+class ChatUnavailableError(RuntimeError):
     """The assistant cannot answer right now (missing key, OpenAI outage, ...)."""
 
 
@@ -223,7 +223,7 @@ def current_time_text() -> str:
     except Exception:
         return datetime.now().strftime("%A, %B %d, %Y, %I:%M %p")
 
-# build system, ai assistant history, and question messages for model
+# build system, chat history, and question messages for model
 def build_messages(message: str, history: list[dict], context: str) -> list[dict]:
     # First: send rules
     # Second: recent conversation
@@ -252,7 +252,7 @@ def _client_for(api_key: str, base_url: str | None):
 def get_client():
     api_key = os.getenv("OPENAI_API_KEY")
     if not api_key:
-        raise AiUnavailableError("OPENAI_API_KEY must be set to use the ai assistant.")
+        raise ChatUnavailableError("OPENAI_API_KEY must be set to use the chat assistant.")
     # empty string -> None -> OpenAI SDK's default endpoint
     return _client_for(api_key, os.getenv("OPENAI_BASE_URL") or None)
 
@@ -281,7 +281,7 @@ def ask_llm(client, messages: list[dict]) -> str:
             options["reasoning_effort"] = effort
 
         try:
-            response = client.ai.completions.create(**options)
+            response = client.chat.completions.create(**options)
         except OpenAIError as exc:
             logger.error(
                 "OpenAI request failed (%s) model=%s status=%s body=%s",
@@ -303,7 +303,7 @@ def ask_llm(client, messages: list[dict]) -> str:
             continue  # try fallback model
         return text
 
-    raise AiUnavailableError("The AI assistant is temporarily unavailable.") from last_exc
+    raise ChatUnavailableError("The AI assistant is temporarily unavailable.") from last_exc
 
 
 # --------------------------------------------------------------------------
@@ -353,6 +353,6 @@ def answer_question(db, message: str, history: list[dict] | None = None, client=
     raw = ask_llm(client, build_messages(message, history, context))
 
     if not raw:
-        raise AiUnavailableError("The AI assistant returned an empty answer. Please try again.")
+        raise ChatUnavailableError("The AI assistant returned an empty answer. Please try again.")
     answer, sources = split_answer(raw, records)
     return {"answer": answer, "sources": sources}
