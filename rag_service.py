@@ -15,6 +15,10 @@ Environment variables (works with OpenAI or any OpenAI-compatible provider, e.g.
   OPENAI_MODEL             (optional, default below) exact model ID from the provider
   OPENAI_REASONING_EFFORT  (optional) e.g. "low" for Gemini thinking models
   OPENAI_MAX_TOKENS_PARAM  (optional) "max_completion_tokens" (default) or "max_tokens"
+
+Retrieval is HYBRID: MongoDB $text (exact words/names) + embeddings (meaning), merged with
+reciprocal rank fusion. If embeddings are unavailable it falls back to $text only.
+See semantic_search.py for the embedding settings.
 """
 
 import logging
@@ -22,6 +26,7 @@ import os
 import re
 from datetime import datetime
 from functools import lru_cache
+from semantic_search import EmbeddingError, SemanticIndex
 
 logger = logging.getLogger(__name__)
 
@@ -36,6 +41,23 @@ MAX_CONTEXT_RECORDS = 14    # hard cap on records sent to model
 MAX_HISTORY_TURNS = 6       # previous chat messages sent for follow-up questions
 SHORT_QUESTION_WORDS = 6    # short follow-ups ("what are its hours?") borrow previous question
 
+# hybrid retrieval: fetch more candidates than we keep, then merge the two rankings
+CANDIDATES_PER_TYPE = 8     # candidates pulled from each search method before merging
+LEXICAL_WEIGHT = 0.7        # keyword matches count a bit less than meaning matches
+SEMANTIC_WEIGHT = 1.0
+RRF_K = 60                  # standard reciprocal-rank-fusion constant
+
+# words that say nothing about WHAT the person wants. MongoDB's own stop list misses some
+# ("can", "get", ...) and $text has no IDF, so one filler word can outrank the real keyword.
+QUERY_STOPWORDS = {
+    "a", "an", "the", "and", "or", "of", "in", "on", "at", "to", "for", "with", "about", "from", "by", "as",
+    "i", "me", "my", "we", "our", "you", "your", "it", "its", "this", "that", "these", "those", "there", "here",
+    "where", "what", "when", "who", "whom", "which", "how", "why", "is", "are", "am", "was", "were", "be", "been",
+    "do", "does", "did", "can", "could", "would", "should", "may", "might", "will", "shall",
+    "get", "got", "find", "go", "need", "want", "please", "tell", "show", "up", "located", "location", "campus",
+}
+FOLLOW_UP_WORDS = {"it", "its", "that", "this", "there", "they", "them", "their", "those", "these"}
+
 # connect name used in chat to mongo collection & id field
 TYPES = {
     "building": ("buildings", "buildingId"),
@@ -44,6 +66,9 @@ TYPES = {
     "parking": ("parkinglots", "lotId"),
 }
 COLLECTION_TO_TYPE = {coll: t for t, (coll, _) in TYPES.items()}
+
+# in-memory vectors for meaning-based search (built lazily, cached in Mongo)
+_semantic = SemanticIndex(TYPES)
 
 DAYS = ["monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday"]
 DAY_ABBR = {d: d[:3].title() for d in DAYS}
@@ -80,6 +105,14 @@ class ChatUnavailableError(RuntimeError):
 # --------------------------------------------------------------------------
 # 1. RETRIEVE
 # --------------------------------------------------------------------------
+def _words(text: str) -> list[str]:
+    return re.findall(r"[A-Za-z0-9]+", text)
+
+# keep only the words that name WHAT is wanted (also strips punctuation so it can't change mongo's rules)
+def _clean_query(text: str) -> str:
+    words = _words(text)
+    kept = [w for w in words if w.lower() not in QUERY_STOPWORDS]
+    return " ".join(kept or words)  # if everything was filler, fall back to the raw words
 
 # search 1 mongo collection & return its best matching records
 def _text_search(collection, query: str, limit: int) -> list[dict]:
@@ -96,36 +129,43 @@ def _text_search(collection, query: str, limit: int) -> list[dict]:
     )
     return list(cursor)
 
-# words that say nothing about WHAT the person wants (MongoDB's own list misses "can", "get", etc.)
-QUERY_STOPWORDS = {
-    "a", "an", "the", "and", "or", "of", "in", "on", "at", "to", "for", "with", "about", "from", "by", "as",
-    "i", "me", "my", "we", "our", "you", "your", "it", "its", "this", "that", "these", "those", "there", "here",
-    "where", "what", "when", "who", "whom", "which", "how", "why", "is", "are", "am", "was", "were", "be", "been",
-    "do", "does", "did", "can", "could", "would", "should", "may", "might", "will", "shall",
-    "get", "got", "find", "go", "need", "want", "please", "tell", "show", "up", "located", "location", "campus",
-}
-FOLLOW_UP_WORDS = {"it", "its", "that", "this", "there", "they", "them", "their", "those", "these"}
+# short messages that refer back ("what are its hours?") need the previous question to make sense
+def _is_follow_up(message: str) -> bool:
+    words = _words(message)
+    return len(words) <= SHORT_QUESTION_WORDS and bool({w.lower() for w in words} & FOLLOW_UP_WORDS)
 
-def _words(text: str) -> list[str]:
-    return re.findall(r"[A-Za-z0-9]+", text)
+def _previous_user_question(history: list[dict]) -> str | None:
+    previous = [m["content"] for m in history if m["role"] == "user"]
+    return previous[-1] if previous else None
 
-# remove punctuation before sending question to mongo text search
-def _clean_query(text: str) -> str:
-    words = _words(text)
-    kept = [w for w in words if w.lower() not in QUERY_STOPWORDS]
-    return " ".join(kept or words)      # if everything was filler, fall back to the raw words
-
+# keyword query for mongo $text (filler words removed)
 def build_search_query(message: str, history: list[dict]) -> str:
-    raw = _words(message)
     query = _clean_query(message)
-    if len(raw) <= SHORT_QUESTION_WORDS and {w.lower() for w in raw} & FOLLOW_UP_WORDS:
-        previous = [m["content"] for m in history if m["role"] == "user"]
+    if _is_follow_up(message):
+        previous = _previous_user_question(history)
         if previous:
-            query = f"{query} {_clean_query(previous[-1])}"
+            query = f"{query} {_clean_query(previous)}"
     return query
 
+# natural-language query for embeddings (keep the full sentence - meaning needs the filler words)
+def build_semantic_query(message: str, history: list[dict]) -> str:
+    query = message.strip()
+    if _is_follow_up(message):
+        previous = _previous_user_question(history)
+        if previous:
+            query = f"{previous.strip()} {query}"
+    return query
+
+# merge ranked lists of ids (reciprocal rank fusion): a record ranked high by either method rises
+def _fuse(rankings: list[tuple[float, list[str]]]) -> list[str]:
+    scores: dict[str, float] = {}
+    for weight, ranking in rankings:
+        for position, key in enumerate(ranking):
+            scores[key] = scores.get(key, 0.0) + weight / (RRF_K + position + 1)
+    return sorted(scores, key=lambda key: -scores[key])  # stable: ties keep first-seen order
+
 # find matching records & add related buildings, departments, and services
-def retrieve(db, query: str) -> list[tuple[str, dict]]:
+def retrieve(db, query: str, query_vec: list[float] | None = None) -> list[tuple[str, dict]]:
     """Return an ordered, de-duplicated list of (type, document), best matches first."""
     # same id can exist in different collections, so include type
     found: dict[tuple[str, str], tuple[str, dict]] = {}
@@ -136,10 +176,25 @@ def retrieve(db, query: str) -> list[tuple[str, dict]]:
         # keep first copy if record is found by more than one search
         found.setdefault((type_, str(doc[id_field])), (type_, doc))
 
-    # search each collection & keep highest scoring matches
+    # meaning-based candidates for every type (None -> keyword search only)
+    semantic = _semantic.search(query_vec, CANDIDATES_PER_TYPE) if query_vec is not None else {}
+
+    # search each collection with BOTH methods, merge the rankings, keep the best few
     matched: dict[str, list[dict]] = {}
-    for type_, (coll, _) in TYPES.items():
-        matched[type_] = _text_search(db[coll], query, LIMITS[coll])
+    for type_, (coll, id_field) in TYPES.items():
+        lexical = _text_search(db[coll], query, CANDIDATES_PER_TYPE)
+        docs = {str(d[id_field]): d for d in lexical}
+        rankings = [(LEXICAL_WEIGHT, [str(d[id_field]) for d in lexical])]
+
+        hits = semantic.get(type_, [])
+        if hits:
+            wanted = [ref for ref, _ in hits if str(ref) not in docs]
+            if wanted:  # fetch the records only the semantic search found
+                for d in db[coll].find({id_field: {"$in": wanted}}):
+                    docs[str(d[id_field])] = d
+            rankings.append((SEMANTIC_WEIGHT, [str(ref) for ref, _ in hits if str(ref) in docs]))
+
+        matched[type_] = [docs[key] for key in _fuse(rankings)][:LIMITS[coll]]
         for doc in matched[type_]:
             add(type_, doc)
 
@@ -361,11 +416,22 @@ def answer_question(db, message: str, history: list[dict] | None = None, client=
 
     # find relevant records, make prompt text, ask model, then check sources
     query = build_search_query(message, history)
-    records = retrieve(db, query)
+
+    # meaning-based search is an extra: any embedding problem falls back to keyword search
+    query_vec = None
+    try:
+        _semantic.ensure_fresh(db, client)
+        query_vec = _semantic.embed_query(client, build_semantic_query(message, history))
+    except EmbeddingError as exc:
+        logger.warning("Semantic search unavailable, using keyword search only: %s", exc)
+
+    records = retrieve(db, query, query_vec)
+    logger.info(
+        "RAG query=%r semantic=%s records=%s",
+        query, query_vec is not None, [f"{t}:{d[TYPES[t][1]]}" for t, d in records],
+    )
     context = build_context(records, db)
     raw = ask_llm(client, build_messages(message, history, context))
-
-    logger.info("RAG query=%r records=%s", query, [f"{t}:{d[TYPES[t][1]]}" for t, d in records])
 
     if not raw:
         raise ChatUnavailableError("The AI assistant returned an empty answer. Please try again.")
