@@ -24,6 +24,13 @@ import sys
 from pathlib import Path
 
 DAYS = ["monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday"]
+PARKING_ACCESS_FIELDS = {
+    "facultyStaff": "Faculty/Staff",
+    "commuter": "Commuter",
+    "visitor": "Visitor",
+    "residenceHall": "Residence Hall",
+    "hourly": "Hourly Parking",
+}
 
 
 # --------------------------------------------------------------------------
@@ -55,13 +62,15 @@ COLLECTIONS = {
         "file": "parkinglots.csv",
         "key": "lotId",
         "key_type": "int",
-        "required": ["lotId", "name", "category", "latitude", "longitude"],
+        "required": ["lotId", "name", *PARKING_ACCESS_FIELDS, "latitude", "longitude"],
         "text": [],
         "int_opt": [],
+        "bool": list(PARKING_ACCESS_FIELDS),
+        "category_from_bool": True,
         "coords": True,
         "images": False,
         "hours": False,
-        "columns": ["lotId", "name", "category", "latitude", "longitude"],
+        "columns": ["lotId", "name", *PARKING_ACCESS_FIELDS, "latitude", "longitude"],
     },
     "departments": {
         "file": "departments.csv",
@@ -108,6 +117,23 @@ def split_images(cell: str) -> list[str]:
     # trim spaces & skip empty entries
     return [p.strip() for p in parts if p.strip()]
 
+
+def parking_category(doc: dict) -> str:
+    """Build the existing display label from explicit parking access flags."""
+    selected = [
+        label for field, label in PARKING_ACCESS_FIELDS.items() if doc[field]
+    ]
+    if not selected:
+        raise ValueError("at least one parking category must be true")
+    if selected == ["Faculty/Staff", "Commuter", "Visitor"]:
+        return "Faculty/Staff, Commuter, and Visitor"
+    if len(selected) == 1:
+        return selected[0]
+    if len(selected) == 2:
+        return f"{selected[0]} and {selected[1]}"
+    return ", ".join(selected[:-1]) + f", and {selected[-1]}"
+
+
 # turn 1 CSV row into checked MongoDB document
 def row_to_doc(row: dict, spec: dict) -> dict:
     """Convert one CSV row to a MongoDB document. Raises ValueError with a clear message."""
@@ -130,7 +156,20 @@ def row_to_doc(row: dict, spec: dict) -> dict:
 
     # shared fields by all campus record types
     doc["name"] = row["name"]
-    doc["category"] = row["category"]
+
+    for col in spec.get("bool", []):
+        value = row.get(col, "").casefold()
+        if value in {"true", "1", "yes", "y"}:
+            doc[col] = True
+        elif value in {"false", "0", "no", "n"}:
+            doc[col] = False
+        else:
+            raise ValueError(f"'{col}' must be true or false, got '{row.get(col, '')}'")
+
+    if spec.get("category_from_bool"):
+        doc["category"] = parking_category(doc)
+    else:
+        doc["category"] = row["category"]
 
     if spec["coords"]:
         try:

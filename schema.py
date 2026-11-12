@@ -28,12 +28,22 @@ class Building(_CampusRecord):
 # validate new parking lot & require positive ID
 class ParkingLotCreate(_CampusRecord):
     lotId: int = Field(gt=0)
+    facultyStaff: bool = False
+    commuter: bool = False
+    visitor: bool = False
+    residenceHall: bool = False
+    hourly: bool = False
 
 # describe parking lot returned by API
 class ParkingLot(_CampusRecord):
     model_config = ConfigDict(extra="ignore")
     
     lotId: int
+    facultyStaff: bool = False
+    commuter: bool = False
+    visitor: bool = False
+    residenceHall: bool = False
+    hourly: bool = False
 
 # describe department/service shown inside building
 class CampusUnit(BaseModel):
