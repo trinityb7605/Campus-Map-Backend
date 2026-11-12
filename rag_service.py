@@ -81,11 +81,6 @@ class ChatUnavailableError(RuntimeError):
 # 1. RETRIEVE
 # --------------------------------------------------------------------------
 
-# remove punctuation before sending question to mongo text search
-def _clean_query(text: str) -> str:
-    # keep letters & numbers so punctuation can't change mongo's search rules
-    return " ".join(re.findall(r"[A-Za-z0-9]+", text))
-
 # search 1 mongo collection & return its best matching records
 def _text_search(collection, query: str, limit: int) -> list[dict]:
     if not query or limit <= 0:
@@ -101,14 +96,29 @@ def _text_search(collection, query: str, limit: int) -> list[dict]:
     )
     return list(cursor)
 
-# follow-up words for ensuring follow-up questions
+# words that say nothing about WHAT the person wants (MongoDB's own list misses "can", "get", etc.)
+QUERY_STOPWORDS = {
+    "a", "an", "the", "and", "or", "of", "in", "on", "at", "to", "for", "with", "about", "from", "by", "as",
+    "i", "me", "my", "we", "our", "you", "your", "it", "its", "this", "that", "these", "those", "there", "here",
+    "where", "what", "when", "who", "whom", "which", "how", "why", "is", "are", "am", "was", "were", "be", "been",
+    "do", "does", "did", "can", "could", "would", "should", "may", "might", "will", "shall",
+    "get", "got", "find", "go", "need", "want", "please", "tell", "show", "up", "located", "location", "campus",
+}
 FOLLOW_UP_WORDS = {"it", "its", "that", "this", "there", "they", "them", "their", "those", "these"}
 
-# add last question when new message is too short to search by itself
+def _words(text: str) -> list[str]:
+    return re.findall(r"[A-Za-z0-9]+", text)
+
+# remove punctuation before sending question to mongo text search
+def _clean_query(text: str) -> str:
+    words = _words(text)
+    kept = [w for w in words if w.lower() not in QUERY_STOPWORDS]
+    return " ".join(kept or words)      # if everything was filler, fall back to the raw words
+
 def build_search_query(message: str, history: list[dict]) -> str:
+    raw = _words(message)
     query = _clean_query(message)
-    words = {w.lower() for w in query.split()}
-    if len(words) <= SHORT_QUESTION_WORDS and words & FOLLOW_UP_WORDS:
+    if len(raw) <= SHORT_QUESTION_WORDS and {w.lower() for w in raw} & FOLLOW_UP_WORDS:
         previous = [m["content"] for m in history if m["role"] == "user"]
         if previous:
             query = f"{query} {_clean_query(previous[-1])}"
