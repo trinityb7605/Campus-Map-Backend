@@ -34,7 +34,7 @@ DEFAULT_MODEL = "gemini-3.5-flash-lite"
 FALLBACK_MODEL = "gemini-3.5-flash-lite" # fallback if main model is unavailable
 
 # limit search results to not send too much campus data to model
-LIMITS = {"buildings": 4, "departments": 4, "university_services": 6, "parkinglots": 2}
+LIMITS = {"buildings": 5, "departments": 5, "university_services": 5, "parkinglots": 5}
 EXPAND_BUILDINGS = 2        # for top N matched buildings, also fetch what's inside
 EXPAND_PER_COLLECTION = 4   # ...up to this many departments/services each
 MAX_CONTEXT_RECORDS = 14    # hard cap on records sent to model
