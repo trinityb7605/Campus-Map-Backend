@@ -101,12 +101,14 @@ def _text_search(collection, query: str, limit: int) -> list[dict]:
     )
     return list(cursor)
 
+# follow-up words for ensuring follow-up questions
+FOLLOW_UP_WORDS = {"it", "its", "that", "this", "there", "they", "them", "their", "those", "these"}
+
 # add last question when new message is too short to search by itself
 def build_search_query(message: str, history: list[dict]) -> str:
-    """Short follow-ups like 'what are its hours?' borrow the previous user question."""
     query = _clean_query(message)
-    if len(query.split()) <= SHORT_QUESTION_WORDS:
-        # add last user question so "what are its hours?" has a search topic
+    words = {w.lower() for w in query.split()}
+    if len(words) <= SHORT_QUESTION_WORDS and words & FOLLOW_UP_WORDS:
         previous = [m["content"] for m in history if m["role"] == "user"]
         if previous:
             query = f"{query} {_clean_query(previous[-1])}"
@@ -274,6 +276,7 @@ def ask_llm(client, messages: list[dict]) -> str:
         options = {
             "model": model,
             "messages": messages,
+            "temperature": 0,
             os.getenv("OPENAI_MAX_TOKENS_PARAM", "max_completion_tokens"): 4000,
         }
         effort = os.getenv("OPENAI_REASONING_EFFORT")
@@ -351,6 +354,8 @@ def answer_question(db, message: str, history: list[dict] | None = None, client=
     records = retrieve(db, query)
     context = build_context(records, db)
     raw = ask_llm(client, build_messages(message, history, context))
+
+    logger.info("RAG query=%r records=%s", query, [f"{t}:{d[TYPES[t][1]]}" for t, d in records])
 
     if not raw:
         raise ChatUnavailableError("The AI assistant returned an empty answer. Please try again.")

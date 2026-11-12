@@ -250,6 +250,7 @@ def chat(
         database,
         request.message,
         [m.model_dump() for m in request.history],
+        logging.basicConfig(level=logging.INFO)
     )
 
 # tell caller when new record uses ID that already exists
